@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"math/big"
 	"mime"
@@ -34,10 +35,10 @@ const (
 )
 
 // ErrMissingBoundary is returned when there is no boundary given for a multipart entity
-var ErrMissingBoundary = errors.New("No boundary found for multipart entity")
+var ErrMissingBoundary = errors.New("no boundary found for multipart entity")
 
 // ErrMissingContentType is returned when there is no "Content-Type" header for a MIME entity
-var ErrMissingContentType = errors.New("No Content-Type found for MIME entity")
+var ErrMissingContentType = errors.New("no Content-Type found for MIME entity")
 
 // Email is the type used for email messages
 type Email struct {
@@ -201,6 +202,8 @@ func sanitizedBody(b []byte, ctParams map[string]string) []byte {
 		if err == nil {
 			return v
 		}
+
+		slog.Error("sanitizedBody charmap conversion error", slog.String("err", err.Error()), slog.String("charset", enc))
 
 		return b
 	}
