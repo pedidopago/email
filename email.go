@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"golang.org/x/text/encoding/charmap"
 )
 
 const (
@@ -155,7 +157,7 @@ func NewEmailFromReader(r io.Reader) (*Email, error) {
 		if ct := p.header.Get("Content-Type"); ct == "" {
 			return e, ErrMissingContentType
 		}
-		ct, _, err := mime.ParseMediaType(p.header.Get("Content-Type"))
+		ct, ctparams, err := mime.ParseMediaType(p.header.Get("Content-Type"))
 		if err != nil {
 			return e, err
 		}
@@ -176,12 +178,93 @@ func NewEmailFromReader(r io.Reader) (*Email, error) {
 		}
 		switch {
 		case ct == "text/plain":
-			e.Text = p.body
+			e.Text = sanitizedBody(p.body, ctparams)
 		case ct == "text/html":
-			e.HTML = p.body
+			e.HTML = sanitizedBody(p.body, ctparams)
 		}
 	}
 	return e, nil
+}
+
+func sanitizedBody(b []byte, ctParams map[string]string) []byte {
+	if _, ok := ctParams["charset"]; !ok {
+		return b
+	}
+
+	enc := strings.ToLower(ctParams["charset"])
+
+	if enc == "utf-8" {
+		return b
+	}
+
+	fallback := func(v []byte, err error) []byte {
+		if err == nil {
+			return v
+		}
+
+		return b
+	}
+
+	switch enc {
+	case "iso-8859-1":
+		return fallback(charmap.ISO8859_1.NewDecoder().Bytes(b))
+	case "iso-8859-2":
+		return fallback(charmap.ISO8859_2.NewDecoder().Bytes(b))
+	case "iso-8859-3":
+		return fallback(charmap.ISO8859_3.NewDecoder().Bytes(b))
+	case "iso-8859-4":
+		return fallback(charmap.ISO8859_4.NewDecoder().Bytes(b))
+	case "iso-8859-5":
+		return fallback(charmap.ISO8859_5.NewDecoder().Bytes(b))
+	case "iso-8859-6":
+		return fallback(charmap.ISO8859_6.NewDecoder().Bytes(b))
+	case "iso-8859-7":
+		return fallback(charmap.ISO8859_7.NewDecoder().Bytes(b))
+	case "iso-8859-8":
+		return fallback(charmap.ISO8859_8.NewDecoder().Bytes(b))
+	case "iso-8859-9":
+		return fallback(charmap.ISO8859_9.NewDecoder().Bytes(b))
+	case "iso-8859-10":
+		return fallback(charmap.ISO8859_10.NewDecoder().Bytes(b))
+	case "iso-8859-13":
+		return fallback(charmap.ISO8859_13.NewDecoder().Bytes(b))
+	case "iso-8859-14":
+		return fallback(charmap.ISO8859_14.NewDecoder().Bytes(b))
+	case "iso-8859-15":
+		return fallback(charmap.ISO8859_15.NewDecoder().Bytes(b))
+	case "iso-8859-16":
+		return fallback(charmap.ISO8859_16.NewDecoder().Bytes(b))
+	case "koi8-r":
+		return fallback(charmap.KOI8R.NewDecoder().Bytes(b))
+	case "koi8-u":
+		return fallback(charmap.KOI8U.NewDecoder().Bytes(b))
+	case "macintosh":
+		return fallback(charmap.Macintosh.NewDecoder().Bytes(b))
+	case "windows-874":
+		return fallback(charmap.Windows874.NewDecoder().Bytes(b))
+	case "windows-1250":
+		return fallback(charmap.Windows1250.NewDecoder().Bytes(b))
+	case "windows-1251":
+		return fallback(charmap.Windows1251.NewDecoder().Bytes(b))
+	case "windows-1252":
+		return fallback(charmap.Windows1252.NewDecoder().Bytes(b))
+	case "windows-1253":
+		return fallback(charmap.Windows1253.NewDecoder().Bytes(b))
+	case "windows-1254":
+		return fallback(charmap.Windows1254.NewDecoder().Bytes(b))
+	case "windows-1255":
+		return fallback(charmap.Windows1255.NewDecoder().Bytes(b))
+	case "windows-1256":
+		return fallback(charmap.Windows1256.NewDecoder().Bytes(b))
+	case "windows-1257":
+		return fallback(charmap.Windows1257.NewDecoder().Bytes(b))
+	case "windows-1258":
+		return fallback(charmap.Windows1258.NewDecoder().Bytes(b))
+	case "x-mac-cyrillic":
+		return fallback(charmap.MacintoshCyrillic.NewDecoder().Bytes(b))
+	}
+
+	return b
 }
 
 // parseMIMEParts will recursively walk a MIME entity and return a []mime.Part containing
